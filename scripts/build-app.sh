@@ -17,8 +17,38 @@ CONFIG="debug"
 DO_INSTALL=1
 DO_RUN=1
 DO_CLEAN=0
-SIGN_IDENTITY="Apple Development: info@design-nk.de (DR26SLZV7Z)"
 ENTITLEMENTS="NeoWispr/Resources/NeoWispr.entitlements"
+
+# Sign-Identity ermitteln:
+# 1. ENV-Override (für CI / spezifische Cert): NEOWISPR_SIGN_IDENTITY=<hash-or-name>
+# 2. Erste lokale "Apple Development"/"Developer ID"-Cert (per SHA-1-Hash, eindeutig)
+# 3. Fallback: ad-hoc ("-") — App läuft lokal, nicht für Distribution geeignet
+detect_sign_identity() {
+  if [ -n "${NEOWISPR_SIGN_IDENTITY:-}" ]; then
+    echo "$NEOWISPR_SIGN_IDENTITY"
+    return
+  fi
+  # awk '{print $2}' liefert den SHA-1 Hash — eindeutig auch bei mehreren Certs gleichen Namens
+  local hash
+  hash=$(security find-identity -v -p codesigning 2>/dev/null \
+            | grep -E 'Apple Development|Developer ID Application' \
+            | head -1 \
+            | awk '{print $2}')
+  if [ -n "$hash" ]; then
+    echo "$hash"
+  else
+    echo "-"  # ad-hoc
+  fi
+}
+SIGN_IDENTITY=$(detect_sign_identity)
+SIGN_LABEL="$SIGN_IDENTITY"
+# Lesbares Label für die Build-Ausgabe (Name + Team-ID statt Hash)
+if [ "$SIGN_IDENTITY" != "-" ]; then
+  SIGN_LABEL=$(security find-identity -v -p codesigning 2>/dev/null \
+                 | grep "$SIGN_IDENTITY" \
+                 | head -1 \
+                 | sed -E 's/.*"([^"]+)".*/\1/')
+fi
 
 for arg in "$@"; do
   case "$arg" in
@@ -91,14 +121,24 @@ xcrun actool NeoWispr/Resources/Assets.xcassets \
   --output-partial-info-plist /tmp/neowispr-icon-info.plist \
   --output-format human-readable-text > /dev/null
 
-echo "[5/6] Code signing mit Apple Dev Identity..."
-codesign --force --deep --options=runtime \
-  --entitlements "$ENTITLEMENTS" \
-  --sign "$SIGN_IDENTITY" \
-  "$APP" 2>&1 | tail -1
+if [ "$SIGN_IDENTITY" = "-" ]; then
+  echo "[5/6] Code signing (ad-hoc — keine Apple Dev Cert in Keychain)..."
+  echo "  → App läuft lokal. Für Distribution: \$NEOWISPR_SIGN_IDENTITY mit Apple Dev Cert setzen."
+  codesign --force --deep --sign - "$APP" 2>&1 | tail -1
+else
+  echo "[5/6] Code signing mit \"$SIGN_LABEL\"..."
+  codesign --force --deep --options=runtime \
+    --entitlements "$ENTITLEMENTS" \
+    --sign "$SIGN_IDENTITY" \
+    "$APP" 2>&1 | tail -1
+fi
 
-# Verifizieren
-codesign --verify --deep --strict "$APP" && echo "  Signature OK"
+# Verifizieren (ad-hoc-Signaturen passieren --verify ohne --deep --strict)
+if [ "$SIGN_IDENTITY" = "-" ]; then
+  codesign --verify "$APP" && echo "  Signature OK (ad-hoc)"
+else
+  codesign --verify --deep --strict "$APP" && echo "  Signature OK"
+fi
 
 if [ "$CONFIG" = "release" ]; then
   if command -v generate_appcast >/dev/null 2>&1; then

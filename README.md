@@ -23,9 +23,11 @@ Native macOS-Diktier-App. Hotkey drücken → sprechen → Text landet im aktive
 
 Voraussetzungen:
 
-- macOS 14 (Sonoma) oder neuer
-- Xcode 15+ oder Swift 6 Toolchain
-- Optional: `whisper-cli` via Homebrew (`brew install whisper-cpp`) wenn du den whisper-cli-Provider nutzen willst
+- macOS 14 (Sonoma) oder neuer (Apple Silicon getestet, Intel sollte gehen)
+- Xcode 15+ oder Swift 6 Toolchain (`xcode-select --install` reicht oft schon)
+- Optional: `whisper-cli` via Homebrew (`brew install whisper-cpp`) wenn du den whisper-cli-Provider nutzen willst — Default-Engine Parakeet braucht das nicht
+
+### Klone und los
 
 ```bash
 git clone https://github.com/NKDesign30/NeoWispr.git
@@ -33,17 +35,42 @@ cd NeoWispr
 ./scripts/build-app.sh
 ```
 
-Das Script baut, signiert (mit deiner lokalen Apple Dev Identity), kopiert nach `/Applications/NeoWispr.app` und startet die App. Beim ersten Start fragt macOS nach Mikrofon- und Bedienungshilfen-Berechtigung — beide werden gebraucht.
+Das Script:
 
-Nur builden ohne Install: `swift build -c release`.
+1. Baut die App (`swift build`, ~3-5 Min beim ersten Mal weil Sparkle-Dep gezogen wird)
+2. **Signiert automatisch** mit der ersten Apple Development Cert aus deinem Keychain — falls keine vorhanden, **fällt auf Ad-hoc-Signing** zurück. App läuft lokal, du musst nichts klicken
+3. Kopiert nach `/Applications/NeoWispr.app` und startet sie
+
+Beim **ersten Hotkey-Druck** fragt macOS:
+
+- **Mikrofon-Permission** — bestätigen
+- **Bedienungshilfen-Permission** (für Text-Inject) — Settings öffnen → NeoWispr aktivieren
+
+Beim **ersten Diktat** lädt sich das Parakeet-Modell automatisch von HuggingFace (~600 MB, einmalig im Hintergrund). Danach läuft alles offline.
+
+Wenn macOS beim ersten Öffnen "Unidentifizierter Entwickler" warnt: Rechtsklick auf die App → Öffnen → bestätigen. Einmal-Aktion.
+
+### Nur builden, nicht installieren
+
+```bash
+./scripts/build-app.sh --no-install --no-run
+# Bundle landet unter .build/arm64-apple-macosx/debug/NeoWispr.app
+```
+
+### Eigene Apple Dev Cert nutzen
+
+Setze `NEOWISPR_SIGN_IDENTITY` auf den SHA-1-Hash oder den vollen Cert-Namen:
+
+```bash
+NEOWISPR_SIGN_IDENTITY="Apple Development: deinname (TEAMID)" ./scripts/build-app.sh
+```
 
 ## Erste Schritte
 
-1. App starten — Menüleisten-Icon erscheint
-2. **Permissions** unter Einstellungen → Berechtigungen erteilen (Mikrofon + Bedienungshilfen)
-3. **Modell laden** — STT-Tab, Provider auswählen. Parakeet/WhisperKit lädt das Modell automatisch beim ersten Start
-4. **Optional: LLM-Postprocessing** — eigenen Groq-API-Key in den KI-Tab eintragen (Free-Tier reicht für normale Nutzung)
-5. **Hotkey drücken** (Default `Option+Space`), sprechen, loslassen — Text wird im aktiven Fenster eingefügt
+1. App startet automatisch nach Build — Menüleisten-Icon erscheint
+2. **Hotkey drücken** (`Option+Space`), sprechen, loslassen — Text wird im aktiven Fenster eingefügt
+3. Optional: **Groq-API-Key** im Dashboard → KI-Tab eintragen, wenn du LLM-Postprocessing willst (kostenlos via [groq.com](https://groq.com), Free-Tier reicht im Alltag)
+4. Snippets und Wörterbuch über das Dashboard nach eigenem Bedarf füllen
 
 ## Daten
 
