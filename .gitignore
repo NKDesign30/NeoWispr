@@ -1,0 +1,30 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
+*.dSYM
+
+# Signing
+*.p12
+*.cer
+*.mobileprovision
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Distribution
+*.dmg
+*.zip
+dist/

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>NeoWispr benötigt Mikrofon-Zugriff für Diktat.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>NeoWispr nutzt Accessibility für direktes Text-Einfügen.</string>
+    <key>CFBundleName</key>
+    <string>NeoWispr</string>
+    <key>CFBundleIdentifier</key>
+    <string>de.neon.neowispr</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+    <key>SUFeedURL</key>
+    <string>https://nidani.shop/neowispr/appcast.xml</string>
+    <key>ATSApplicationFontsPath</key>
+    <string>Fonts/</string>
+</dict>
+</plist>
