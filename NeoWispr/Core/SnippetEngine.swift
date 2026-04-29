@@ -3,40 +3,44 @@ import Foundation
 final class SnippetEngine {
 
     private var snippets: [String: String] = [:]
+    private var orderedTriggers: [(trigger: String, expansion: String)] = []
+
+    private static let trimSet: CharacterSet = .whitespacesAndNewlines
+        .union(CharacterSet(charactersIn: ".,!?;:…\"'"))
 
     func load(from url: URL) throws {
         let data = try Data(contentsOf: url)
         let items = try JSONDecoder().decode([Snippet].self, from: data)
-        snippets = Dictionary(
-            items.map { ($0.trigger.lowercased(), $0.expansion) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        update(snippets: items)
     }
 
     func update(snippets: [Snippet]) {
-        self.snippets = Dictionary(
-            snippets.map { ($0.trigger.lowercased(), $0.expansion) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        let pairs = snippets.map { (Self.normalize($0.trigger), $0.expansion) }
+        self.snippets = Dictionary(pairs, uniquingKeysWith: { first, _ in first })
+        self.orderedTriggers = pairs
+            .filter { !$0.0.isEmpty }
+            .sorted { $0.0.count > $1.0.count }
     }
 
     func expand(_ text: String) -> String {
-        let lowercased = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = Self.normalize(text)
 
-        // Exakter Match: ganzer Text ist ein Snippet-Trigger
-        if let expansion = snippets[lowercased] {
+        // Exakter Match (punctuation-tolerant): ganzer Text ist ein Trigger
+        if let expansion = snippets[normalized] {
             return expansion
         }
 
-        // Partieller Match: Trigger kommt im Text vor (case-insensitive, letzter Treffer)
+        // Partieller Match: längste Trigger zuerst, jeder Trigger einmal
         var result = text
-        for (trigger, expansion) in snippets {
-            if let range = result.range(of: trigger, options: [.caseInsensitive, .backwards]) {
+        for (trigger, expansion) in orderedTriggers {
+            if let range = result.range(of: trigger, options: .caseInsensitive) {
                 result.replaceSubrange(range, with: expansion)
-                break
             }
         }
-
         return result
+    }
+
+    private static func normalize(_ s: String) -> String {
+        s.lowercased().trimmingCharacters(in: trimSet)
     }
 }

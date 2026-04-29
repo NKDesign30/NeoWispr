@@ -177,33 +177,32 @@ final class RecordingController {
             let wavURL = try audioCapture.stop()
             let rawText = try await sttPipeline.transcribe(wavURL: wavURL)
             let correctedText = dictionaryStore.apply(to: rawText)
-            let expandedText = snippetEngine.expand(correctedText)
 
-            // LLM Post-Processing (opt-in, mit Raw-Text-Fallback)
-            let processedText: String
-            let rawForHistory: String?
+            // LLM Post-Processing (opt-in) räumt Whisper-Fehler auf,
+            // BEVOR Snippets matchen — sonst kann ein "Gira-Ticket" nie als
+            // "/jira"-Trigger erkannt werden.
+            let llmText: String
             if UserDefaults.standard.bool(forKey: AppSettings.llmEnabled) {
                 state = .processing
                 do {
-                    let improved = try await llmPostProcessor.process(
-                        text: expandedText,
+                    llmText = try await llmPostProcessor.process(
+                        text: correctedText,
                         style: resolveStyleForActiveApp(),
                         customVocabulary: dictionaryStore.llmVocabularyContext,
                         clipboardContext: clipboardContextForLLM(),
                         currentWindowContext: currentWindowContextForLLM()
                     )
-                    processedText = improved
-                    // Nur Raw speichern wenn LLM tatsächlich etwas verändert hat
-                    rawForHistory = (improved == expandedText) ? nil : expandedText
                 } catch {
                     NSLog("LLM post-processing failed: \(error.localizedDescription)")
-                    processedText = expandedText
-                    rawForHistory = nil
+                    llmText = correctedText
                 }
             } else {
-                processedText = expandedText
-                rawForHistory = nil
+                llmText = correctedText
             }
+
+            // Snippet-Expansion als letzter Schritt — operiert auf bereinigtem Text.
+            let processedText = snippetEngine.expand(llmText)
+            let rawForHistory: String? = (processedText == correctedText) ? nil : correctedText
 
             lastTranscript = processedText
             state = .injecting
