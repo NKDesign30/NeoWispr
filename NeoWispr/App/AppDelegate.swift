@@ -30,4 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return true
     }
+
+    /// Menübar-App: Cmd+W oder Window-Close darf die App NICHT terminieren.
+    nonisolated func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
 }

@@ -220,6 +220,10 @@ final class AppEnvironment {
             backing: .buffered,
             defer: false
         )
+        // Programmatic NSWindow: Default ist isReleasedWhenClosed=true. Cmd+W würde das Window
+        // deallocaten, der weak-Ref wäre dangling während die Close-Animation noch läuft —
+        // genau das Pattern aus dem _NSWindowTransformAnimation Crash.
+        window.isReleasedWhenClosed = false
         window.title = "NeoWispr"
         window.contentView = NSHostingView(rootView: content)
 
